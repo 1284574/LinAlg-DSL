@@ -1,76 +1,276 @@
-# LinAlg-DSL
+# Rust Tensor Engine from Scratch
 
-Rust Tensor Engine from Scratch
-A minimal, from-scratch tensor and linear algebra engine in Rust, built to deeply understand how modern ML frameworks work under the hood. This project focuses on:
+A minimal, from-scratch tensor and linear algebra engine in Rust, built to deeply understand how modern machine learning frameworks work under the hood.
 
-Hand-written tensor kernels (no ndarray, no BLAS).
+This project intentionally avoids external numerical libraries (`ndarray`, BLAS, etc.) and instead implements all tensor operations and linear algebra kernels manually.
 
-LU-based linear solves and triangular systems.
+It is designed as a **learning and portfolio project**, not a production library.
 
-A small AST layer to represent and evaluate tensor expressions.
+---
 
-It’s designed as a learning and portfolio project, not a production library.
+## Motivation
 
-Project Goals:
-Implement a Tensor type with explicit rows, cols, and manual indexing.
+Modern ML frameworks like PyTorch, TensorFlow, and JAX rely on highly optimized tensor engines and linear algebra kernels. To truly understand how these systems work, it is essential to build these components from first principles.
 
-Write all core kernels by hand:
+This project focuses on:
 
-Elementwise ops: add, sub, scale, ReLU.
+- Writing tensor kernels completely by hand  
+- Implementing core linear algebra routines from scratch  
+- Representing tensor computations using a small AST layer  
+- Building a foundation for deeper work in:
+  - ML systems engineering  
+  - compiler design  
+  - numerical computing  
+  - high-performance computing  
 
-Matrix–vector and matrix–matrix routines.
+---
 
-Triangular solvers and permutation application.
+## Features
 
-Build a simple AST (Abstract Syntax Tree) to represent tensor expressions and evaluate them using your kernels.
+### Core Tensor Engine
 
-Use this as a stepping stone toward:
+- Custom `Tensor` type backed by a flat memory buffer (`Vec<f64>` or generic equivalent)
+- Explicit row and column tracking
+- Manual indexing with helper functions
 
-Custom ML layers and small models.
+### Hand-Written Numerical Kernels
 
-Deeper work in compilers, numerical methods, and systems-level ML.
+#### Elementwise Operations
 
-Project Structure
-Rough module layout (names may vary as you refactor):
+- `add(a, b)` → elementwise tensor addition
+- `sub(a, b)` → elementwise tensor subtraction
+- `scale(c, x)` → scalar-tensor multiplication
+- `relu(a)` → elementwise ReLU activation
 
-text
+#### Linear Algebra Operations
+
+- Matrix–vector multiplication
+- Matrix–matrix multiplication
+- Diagonal matrix–vector multiplication (`diag_matvec`)
+- Forward substitution (`solve_lower`)
+- Backward substitution (`solve_upper`)
+- Permutation matrix application (`matvec_perm`)
+
+All algorithms are implemented manually without BLAS.
+
+---
+
+## AST-Based Expression Evaluation
+
+Includes a small Abstract Syntax Tree (AST) layer that allows:
+
+- Representation of tensor expressions as computation graphs
+- Evaluation of expressions using the custom tensor kernels
+- Separation of computation representation and execution
+
+This mirrors the architecture used in real ML frameworks.
+
+---
+
+## Project Goals
+
+The primary goals of this project are:
+
+- Implement a `Tensor` type with:
+  - explicit rows and columns
+  - flat buffer storage
+  - manual indexing
+
+- Write all numerical kernels from scratch:
+  - Elementwise operations
+  - Matrix operations
+  - Triangular solvers
+  - Permutation application
+
+- Build an AST layer for tensor expression evaluation
+
+- Use this engine as a foundation for:
+  - custom ML layers
+  - small neural networks
+  - compiler experiments
+  - ML runtime experimentation
+
+---
+
+## Project Structure
+
+```
 src/
-  main.rs        # small demos / manual tests
-  tensor.rs      # Tensor struct and all numerical kernels
-  ast.rs         # AST definitions and evaluation over tensors
-  lib.rs         # (optional) re-exports and module wiring
-  tensor.rs      # This file implements the core numeric engine
+├── main.rs      # demos, manual tests, experimentation
+├── tensor.rs    # core Tensor type and numerical kernels
+├── ast.rs       # AST representation and evaluation logic
+├── lib.rs       # optional module exports and wiring
+```
 
-Tensor type:
+---
 
-Stores data as a flat buffer (e.g., Vec<f32>) plus rows, cols.
+## Tensor Implementation Details
 
-Indexing helpers: at(i, j), set(i, j, val).
+### Tensor Representation
 
-Elementwise kernels:
+The `Tensor` struct stores:
 
-add(a, b) -> Tensor – elementwise A + B.
+- Flat contiguous buffer (`Vec<f64>`)
+- Number of rows
+- Number of columns
 
-sub(a, b) -> Tensor – elementwise A - B.
+Example conceptual layout:
 
-scale(c, x) -> Tensor – scalar–tensor multiply c * X.
+```rust
+struct Tensor {
+    data: Vec<f64>,
+    rows: usize,
+    cols: usize,
+}
+```
 
-relu(a) -> Tensor – applies max(0,x) elementwise.
+### Indexing Helpers
 
-Linear-algebra kernels:
+Functions provide safe and explicit access:
 
-Diagonal mat–vec: diag_matvec(d, x).
+- `at(i, j)` → read element
+- `set(i, j, value)` → write element
 
-Forward substitution: solve_lower(L, b) for L y = b.
+Manual indexing ensures full control over memory layout and access patterns.
 
-Backward substitution: solve_upper(U, y) for U x = y.
+---
 
-Permutation matrix–vector: matvec_perm(P, x) for P x.
+## Implemented Kernels
 
-Safety checks:
+### Elementwise Kernels
 
-Assertions on shape compatibility (matching dimensions, square matrices where needed).
+```rust
+add(a, b)     -> Tensor
+sub(a, b)     -> Tensor
+scale(c, x)   -> Tensor
+relu(a)       -> Tensor
+```
 
-Assertions to validate permutation matrices (exactly one 1 per row).
+These operate directly on the flat buffer with explicit loops.
 
-These functions are intentionally low-level and explicit to make the math and indexing transparent.
+---
+
+### Linear Algebra Kernels
+
+#### Diagonal Matrix–Vector Multiply
+
+```rust
+diag_matvec(d, x)
+```
+
+Computes:
+
+```
+y = D x
+```
+
+where `D` is diagonal.
+
+---
+
+#### Forward Substitution
+
+```rust
+solve_lower(L, b)
+```
+
+Solves:
+
+```
+L y = b
+```
+
+where `L` is lower triangular.
+
+---
+
+#### Backward Substitution
+
+```rust
+solve_upper(U, y)
+```
+
+Solves:
+
+```
+U x = y
+```
+
+where `U` is upper triangular.
+
+---
+
+#### Permutation Application
+
+```rust
+matvec_perm(P, x)
+```
+
+Computes:
+
+```
+y = P x
+```
+
+where `P` is a permutation matrix.
+
+---
+
+## Safety and Validation
+
+The implementation includes runtime checks for correctness:
+
+- Shape compatibility assertions
+- Square matrix validation where required
+- Permutation matrix validation:
+  - Exactly one `1` per row
+  - All other entries `0`
+
+These checks ensure correctness while keeping implementation transparent.
+
+---
+
+## Why This Matters
+
+This project builds foundational knowledge required for:
+
+- ML framework development
+- Compiler work (LLVM, MLIR, XLA, etc.)
+- GPU kernel development
+- Numerical libraries
+- Scientific computing systems
+
+It demonstrates understanding of:
+
+- memory layout
+- numerical algorithms
+- linear algebra implementation
+- systems-level performance considerations
+
+---
+
+## Future Extensions
+
+Planned improvements include:
+
+- Automatic differentiation (autograd)
+- Computation graph optimization
+- SIMD optimizations
+- GPU backend experimentation
+- JIT compilation experiments
+- Small neural network implementations
+
+---
+
+## Example Usage
+
+```rust
+let a = Tensor::new(...);
+let b = Tensor::new(...);
+
+let c = add(&a, &b);
+let d = relu(&c);
+```
+
+---
+
